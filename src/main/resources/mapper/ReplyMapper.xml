@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="replyDao">
+	<resultMap type="reply" id="reply">
+		<result column="RNO" property="rno"/>
+		<result column="BNO" property="bno"/>
+		<result column="REPLYER" property="replyer"/>
+		<result column="REPLYTEXT" property="replyText"/>		
+		<result column="REGDATE" property="regDate"/>
+		<result column="UPDATEDATE" property="updateDate"/>
+	</resultMap>
+	
+	<!-- 댓글작성 -->
+	<insert id="insertReply" parameterType="reply">
+
+		INSERT INTO REPLY_PHJ(
+			RNO
+			, BNO
+			, REPLYTEXT
+			, REPLYER
+			, REGDATE
+		)VALUES(
+			REPLY_PHJ_SEQ.NEXTVAL
+			, #{bno}
+			, #{replyText}
+			, #{replyer}
+			, SYSDATE
+		)
+	</insert>
+	
+	<!-- 댓글리스트 -->
+	<select id="replyList" resultType="reply" parameterType="hashmap">
+	
+		SELECT 
+			RNO
+			, BNO
+			, REPLYER
+			, REPLYTEXT
+			, REGDATE
+			, UPDATEDATE
+		FROM
+			REPLY_PHJ 
+		WHERE
+			BNO = #{bno}
+		ORDER BY
+			RNO 	
+	</select>
+	
+	<update id="replyUpdate" parameterType="reply">
+	UPDATE REPLY_PHJ
+	SET	REPLYTEXT = #{replyText}
+		, UPDATEDATE = sysdate
+	WHERE
+		RNO=#{rno}
+	</update>
+	
+	<delete id="replyDelete" parameterType="int">
+	DELETE FROM REPLY_PHJ
+	WHERE
+		rno=#{rno}
+	</delete>
+</mapper>

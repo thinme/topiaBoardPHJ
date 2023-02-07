@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="memberDao">
+
+	<resultMap type="memberVo" id="memberVo">
+		<result column="MEMBER_IDX" property="memberIdx"/>
+		<result column="MEMBER_NAME" property="memberName"/>
+		<result column="MEMBER_ID" property="memberId"/>
+		<result column="MEMBER_PASSWORD" property="memberPassword"/>		
+		<result column="MEMBER_EMAIL" property="memberEmail"/>
+		<result column="MEMBER_REGIST_DATE" property="memberRegDate"/>
+		<result column="MEMBER_UPDATE_DATE" property="memberUpdateDate"/>
+		<result column="MEMBER_REGIST_ID" property="memberRegId"/>
+		<result column="MEMBER_UPDATE_ID" property="memberUpdateId"/>
+		<result column="MEMBER_REGIST_IP" property="memberRegIp"/>
+		<result column="MEMBER_UPDATE_IP" property="memberUpdateIp"/>
+		<result column="MEMBER_AUTH" property="memberAuth"/>		
+		<result column="MEMBER_ADRESS" property="memberAdress"/>		
+		<result column="MEMBER_DETAIL_ADRESS" property="memberDetailAdress"/>		
+		<result column="MEMBER_EXTRA_ADRESS" property="memberExtraAdress"/>		
+		<result column="MEMBER_ZIPCODE" property="memberZipcode"/>		
+	</resultMap>
+	
+	<!-- 로그인체크 -->
+	<select id="loginCheck" parameterType="hashmap" resultType="memberVo">
+		SELECT 
+			*
+		FROM
+			MEMBER_PHJ
+		WHERE
+			member_id = #{id} and member_password = #{pw}
+	</select>
+	
+	<select id="loginIdCheck" parameterType="String" resultType="Integer">
+		SELECT 
+				count(*)
+		FROM
+			MEMBER_PHJ
+		WHERE
+			member_id = #{memberId} 
+	</select>
+	<select id="loginPwCheck" parameterType="String" resultType="Integer">
+		SELECT 
+			count(*)
+		FROM
+			MEMBER_PHJ
+		WHERE
+			member_password = #{memberPassword}
+	</select>
+	
+	<!-- 회원가입 -->
+	<insert id="memberInsert" parameterType="memberVo">
+		<selectKey keyProperty="memberIdx" resultType="Integer" order="BEFORE">
+			select member_phj_seq.nextval as memberIdx from dual
+		</selectKey>
+		INSERT INTO MEMBER_PHJ (
+				MEMBER_IDX
+			,	MEMBER_NAME
+			,	MEMBER_ID
+			,	MEMBER_PASSWORD
+			,	MEMBER_EMAIL
+			,	MEMBER_REGIST_DATE
+			,	MEMBER_UPDATE_DATE
+			,	MEMBER_REGIST_IP
+			,	MEMBER_REGIST_ID
+			,	MEMBER_AUTH
+			,	MEMBER_ADRESS
+			,	MEMBER_DETAIL_ADRESS
+			,	MEMBER_EXTRA_ADRESS
+			,	MEMBER_ZIPCODE
+			) VALUES (
+				#{memberIdx}
+			,	#{memberName}
+			,	#{memberId}
+			,	#{memberPassword}
+			,	#{memberEmail}
+			,	SYSDATE
+			,	SYSDATE
+			,	#{memberRegIp}
+			,	#{memberRegId}
+			,	'member'
+			,	#{memberAdress}
+			,	#{memberDetailAdress}
+			,	#{memberExtraAdress}
+			,	#{memberZipcode}
+			)
+	</insert>
+	<!-- 회원목록 -->
+	<select id="memberList" parameterType="Map" resultMap="memberVo">
+		SELECT * FROM 
+			(SELECT ROWNUM AS RN, A.*
+		FROM
+			(SELECT MEMBER_IDX
+					,	MEMBER_NAME
+					,	MEMBER_ID
+					,	MEMBER_PASSWORD
+					,	MEMBER_EMAIL
+					,	MEMBER_REGIST_DATE
+					,	MEMBER_UPDATE_DATE
+					,	MEMBER_REGIST_ID
+					,	MEMBER_UPDATE_ID
+					,	'x.x' || SUBSTR(MEMBER_REGIST_IP, -4) AS memberRegIp
+					,	'x.x' || SUBSTR(MEMBER_UPDATE_IP, -4) AS memberUpdateIp
+					,	MEMBER_AUTH
+		FROM MEMBER_PHJ
+		WHERE 1=1
+		<if test="searchCondition != null and searchCondition != ''">
+					<choose>
+						<when test="searchCondition == 'memberId'">
+							 AND 	MEMBER_ID LIKE '%${memberSearchWord}%'
+						</when>
+						<when test="searchCondition == 'memberName'">
+							 AND	MEMBER_NAME LIKE '%${memberSearchWord}%'
+						</when>
+					</choose>	
+				</if>
+		ORDER BY MEMBER_IDX DESC)A)
+		<![CDATA[
+			WHERE RN BETWEEN (#{cri.page} - 1) * #{cri.perPageNum} + 1 AND #{cri.page} * #{cri.perPageNum}
+			]]>
+	</select>
+	
+	<select id="memberListCount" resultType="Integer" >
+	SELECT 
+		COUNT(DISTINCT MEMBER_IDX)
+    FROM MEMBER_PHJ
+	WHERE 1=1
+	
+		<if test="searchCondition != null and searchCondition != ''">
+			<choose>
+						<when test="searchCondition == 'memberId'">
+							 AND MEMBER_ID LIKE '%${memberSearchWord}%'
+						</when>
+						<when test="searchCondition == 'memberName'">
+							 AND MEMBER_NAME LIKE'%${memberSearchWord}%'
+						</when>	
+			</choose>	
+		</if>
+	</select>
+	
+
+	<!-- 상세보기 -->
+	<select id="memberDetail" resultMap="memberVo" parameterType="Integer">
+	/* MemberMapper.memberDetail */
+	SELECT 
+			MEMBER_IDX
+		,	MEMBER_NAME
+		,	MEMBER_ID
+		,	MEMBER_PASSWORD
+		,	MEMBER_EMAIL
+		,	MEMBER_REGIST_DATE
+		,	MEMBER_UPDATE_DATE
+		,	MEMBER_REGIST_IP
+		,	MEMBER_UPDATE_IP
+		,	MEMBER_REGIST_ID
+		,	MEMBER_UPDATE_ID
+		,	MEMBER_AUTH
+		,	MEMBER_ADRESS
+		,	MEMBER_DETAIL_ADRESS
+		,	MEMBER_EXTRA_ADRESS
+		,	MEMBER_ZIPCODE
+	FROM	
+		MEMBER_PHJ
+	WHERE
+		MEMBER_IDX = #{memberIdx}
+	</select>
+	
+	<!-- 수정페이지 -->
+	<update id="memberUpdate" parameterType="memberVo">
+	/* MemberMapper.memberUpdate */
+	UPDATE	MEMBER_PHJ
+	SET
+		MEMBER_IDX = #{memberIdx}
+		, MEMBER_NAME = #{memberName}
+		, MEMBER_ID = #{memberId}
+		, MEMBER_PASSWORD = #{memberPassword}
+		, MEMBER_EMAIL = #{memberEmail} 
+		, MEMBER_UPDATE_DATE = SYSDATE
+		, MEMBER_UPDATE_IP = #{memberUpdateIp}
+		, MEMBER_UPDATE_ID = #{memberUpdateId}
+		, MEMBER_AUTH = #{memberAuth}
+		, MEMBER_ADRESS = #{memberAdress}
+		, MEMBER_DETAIL_ADRESS = #{memberDetailAdress}
+		, MEMBER_EXTRA_ADRESS = #{memberExtraAdress}
+		, MEMBER_ZIPCODE = #{memberZipcode}
+	WHERE 	MEMBER_IDX = #{memberIdx}
+	</update> 
+	
+	<delete id="memberDelete" parameterType="Integer">
+	/* MemberMapper.memberDelete */
+		DELETE FROM MEMBER_PHJ 
+		WHERE MEMBER_IDX = #{memberIdx}
+	</delete>
+
+	<delete id="memberDeleteChkList" parameterType="hashmap">
+		/* MemberMapper.memberDeletecheck */
+		DELETE FROM MEMBER_PHJ 
+		WHERE member_idx = #{memberIdx}
+	</delete>
+</mapper>

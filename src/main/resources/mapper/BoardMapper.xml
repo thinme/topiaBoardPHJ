@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="boardDao">
+	<resultMap type="boardVo" id="boardVo">
+		<result column="BOARD_IDX" property="boardIdx"/>		
+		<result column="BOARD_MEMBER_ID" property="boardMemberId"/>		
+		<result column="BOARD_MEMBER_NAME" property="boardMemberName"/>		
+		<result column="BOARD_REGIST_ID" property="boardRegId"/>		
+		<result column="BOARD_UPDATE_ID" property="boardUpdateId"/>		
+		<result column="BOARD_REGIST_IP" property="boardRegIp"/>		
+		<result column="BOARD_UPDATE_IP" property="boardUpdateIp"/>		
+		<result column="BOARD_REGIST_DATE" property="boardRegDate"/>		
+		<result column="BOARD_UPDATE_DATE" property="boardUpdateDate"/>		
+		<result column="BOARD_TITLE" property="boardTitle"/>		
+		<result column="BOARD_CONTENT" property="boardContent"/>		
+		<result column="BOARD_WRITER" property="boardWriter"/>		
+		<result column="BOARD_WRITE_DATE" property="boardWriteDate"/>		
+		<result column="BOARD_CONTENT_REPLY" property="boardContentReply"/>		
+		<result column="BOARD_NOTICEYN" property="boardNoticeYn"/>			
+		<result column="VIEW_COUNT" property="viewCount"/>			
+	</resultMap>
+	
+	<!-- 게시판 리스트 -->
+	<select id="boardList" parameterType="Map" resultMap="boardVo">
+	/* BoardMapper.boardList */
+		SELECT * FROM
+			(SELECT ROWNUM AS RN, A.*
+			FROM	(SELECT
+					(SELECT MEMBER_ID FROM MEMBER_PHJ WHERE MEMBER_ID = BOARD_MEMBER_ID AND ROWNUM=1) AS BOARD_MEMBER_ID
+				,	(SELECT MEMBER_NAME FROM MEMBER_PHJ WHERE MEMBER_NAME = BOARD_MEMBER_NAME AND ROWNUM=1) AS BOARD_MEMBER_NAME
+				,	BOARD_IDX
+				,	CASE WHEN LENGTH(BOARD_TITLE) > 10
+					THEN SUBSTR(BOARD_TITLE, 1, 10) || '...'
+					ELSE BOARD_TITLE
+					END BOARD_TITLE
+				,	CASE WHEN LENGTH(BOARD_CONTENT) > 15
+					THEN SUBSTR(BOARD_CONTENT, 1, 15) || '...'
+					ELSE BOARD_CONTENT
+					END BOARD_CONTENT
+				,	to_char(BOARD_REGIST_DATE, 'yyyy-mm-dd') as boardRegDate
+				,	to_char(BOARD_UPDATE_DATE, 'yyyy-mm-dd') as boardUpdateDate
+				
+				,	'x.x' || SUBSTR(BOARD_REGIST_IP, -4) AS BOARD_REGIST_IP
+				,	'x.x' || SUBSTR(BOARD_UPDATE_IP, -4) AS BOARD_UPDATE_IP
+				,	BOARD_NOTICEYN
+				,	BOARD_CONTENT_REPLY
+				,	to_char(BOARD_WRITE_DATE, 'yyyy-mm-dd') AS boardWriteDate
+				,	VIEW_COUNT
+				FROM BOARD_PHJ
+				WHERE 1=1
+				<if test = "searchCondition != null and searchCondition != '' ">
+					<choose>
+						 <when test= "searchCondition == 'boardTitle'">
+							AND BOARD_TITLE LIKE '%${boardSearchWord}%'
+						</when> 
+						<when test= "searchCondition == 'boardContent'">
+							AND BOARD_CONTENT LIKE '%${boardSearchWord}%'
+						</when>
+						<when test= "searchCondition =='boardMemberId'">
+							AND BOARD_MEMBER_ID LIKE '%${boardSearchWord}%'
+						</when>
+						<when test= "searchCondition == 'boardMemberName'">
+							AND BOARD_MEMBER_NAME LIKE '%${boardSearchWord}%'
+						</when>
+					</choose>
+				</if>
+				ORDER BY DECODE(BOARD_NOTICEYN, '1', 1), BOARD_IDX DESC) A)
+				<![CDATA[
+					WHERE RN BETWEEN (#{cri.page} - 1) * #{cri.perPageNum} + 1 AND #{cri.page} * #{cri.perPageNum}
+				]]>
+	</select>
+	
+	<select id="boardListCount" resultType="Integer">
+		SELECT
+			COUNT(DISTINCT BOARD_IDX)
+		FROM BOARD_PHJ
+		WHERE 1=1
+			<if test = "searchCondition != null and searchCondition != '' ">
+				<choose>
+					<when test= "searchCondition =='boardTitle'">
+						AND BOARD_TITLE LIKE '%${boardSearchWord}%'
+					</when>
+					<when test= "searchCondition == 'boardContent'">
+						AND BOARD_CONTENT LIKE '%${boardSearchWord}%'
+					</when>
+					<when test= "searchCondition == 'boardMemberId'">
+						AND BOARD_MEMBER_ID LIKE '%${boardSearchWord}%'
+					</when>
+					<when test= "searchCondition == 'boardMemberName'">
+						AND BOARD_MEMBER_NAME LIKE '%${boardSearchWord}%'
+					</when>
+				</choose>
+			</if>
+	</select>
+	
+	<!-- 게시판등록 -->
+	<insert id="boardInsert" parameterType="boardVo">
+	/* BoardMapper.boardInsert */
+		INSERT INTO BOARD_PHJ(
+			BOARD_IDX
+			,	BOARD_MEMBER_ID
+			,	BOARD_MEMBER_NAME
+			,	BOARD_TITLE
+			,	BOARD_CONTENT
+			,	BOARD_WRITE_DATE
+			,	BOARD_REGIST_DATE
+			,	BOARD_NOTICEYN
+			,	BOARD_REGIST_IP
+		)VALUES(
+			BOARD_PHJ_SEQ.NEXTVAL
+			,	#{boardMemberId}
+			,	#{boardMemberName}
+			,	#{boardTitle}
+			,	#{boardContent}
+			,	#{boardWriteDate}
+			,	SYSDATE
+			,	#{boardNoticeYn}
+			,	#{boardRegIp}
+		)
+	</insert>
+	
+	<!-- 게시글 상세보기 -->
+	<select id="boardDetail" resultMap = "boardVo" parameterType="Integer">
+	/* BoardMapper.boardDetail */
+		SELECT 
+			BOARD_IDX
+			,	(SELECT MEMBER_ID FROM MEMBER_PHJ WHERE MEMBER_ID = BOARD_MEMBER_ID AND ROWNUM=1) AS BOARD_MEMBER_ID
+			,	(SELECT MEMBER_NAME FROM MEMBER_PHJ WHERE MEMBER_NAME = BOARD_MEMBER_NAME AND ROWNUM=1) AS BOARD_MEMBER_NAME
+			,	BOARD_TITLE
+			,	BOARD_CONTENT
+			,	BOARD_CONTENT_REPLY
+			,	BOARD_NOTICEYN
+			,	BOARD_WRITE_DATE
+			,	BOARD_REGIST_DATE
+			,	BOARD_REGIST_IP
+			FROM BOARD_PHJ
+			WHERE BOARD_IDX = #{boardIdx}
+	</select>
+	
+	<!-- 게시글 업데이트 -->
+	<update id="boardUpdate" parameterType="boardVo">
+	/* BoardMapper.boardUpdate */
+		UPDATE BOARD_PHJ
+		SET BOARD_MEMBER_ID = #{boardMemberId}
+		,	BOARD_MEMBER_NAME = #{boardMemberName}
+		,	BOARD_TITLE = #{boardTitle}
+		,	BOARD_CONTENT = #{boardContent}
+		,	BOARD_WRITE_DATE = #{boardWriteDate}
+		,	BOARD_UPDATE_DATE = SYSDATE
+		,	BOARD_NOTICEYN = #{boardNoticeYn}
+		,	BOARD_UPDATE_IP = #{boardUpdateIp}
+		,	BOARD_UPDATE_ID = #{boardUpdateId}
+		,	BOARD_CONTENT_REPLY = #{boardContentReply}
+		WHERE BOARD_IDX = #{boardIdx}
+	</update>
+	
+	<!-- 조회수 증가 -->
+	<update id="boardViewCount">
+	/* BoardMapper.boardViewCount */
+	UPDATE BOARD_PHJ
+	SET
+		VIEW_COUNT = VIEW_COUNT + 1
+	WHERE
+		BOARD_IDX = #{boardIdx}
+	</update>
+	
+	<!-- 상세게시글 삭제 -->
+	<delete id="boardDelete" parameterType="Integer">
+	/* BoardMapper.boardDelete */
+		DELETE FROM BOARD_PHJ
+		WHERE BOARD_IDX = #{boardIdx}
+	</delete>
+	<delete id="boardDeleteChkList" parameterType="hashMap">
+	/* BoardMapper.boardDeleteChkList */
+		DELETE 
+		FROM BOARD_PHJ
+		WHERE 	BOARD_IDX = #{boardIdx}
+	</delete>
+</mapper>
